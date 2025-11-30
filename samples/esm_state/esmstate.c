@@ -7,27 +7,29 @@
 
 int main(int argc, char *argv[])
 {
-    char ifname[IFNAMESIZE] = "\\Device\\NPF_{YOUR-ADAPTER-GUID}";
+   ecx_contextt context = {0};
+   char ifname[IFNAMESIZE] = "\\Device\\NPF_{YOUR-ADAPTER-GUID}";
 
-    if (argc > 1)
-    {
-        strncpy(ifname, argv[1], sizeof(ifname) - 1);
-        ifname[sizeof(ifname) - 1] = '\0';
-    }
+   if (argc > 1)
+   {
+      strncpy(ifname, argv[1], sizeof(ifname) - 1);
+      ifname[sizeof(ifname) - 1] = '\0';
+   }
 
-    if (!ec_init(ifname))
-    {
-        printf("Error: could not initialize adapter '%s'.\n", ifname);
-        return -1;
-    }
+   printf("Initializing adapter '%s'...\n", ifname);
+   if (!ecx_init(&context, ifname))
+   {
+      printf("Error: could not initialize adapter '%s'.\n", ifname);
+      return -1;
+   }
 
-    printf("Adapter init OK, ESM is out of INIT. Keeping interface open...\n");
+   printf("Adapter init OK, ESM is out of INIT. Keeping interface open...\n");
 
-    while (1)
-    {
-        osal_usleep(1000000);
-    }
+   while (1)
+   {
+      osal_usleep(1000000);
+   }
 
-    ec_close();
-    return 0;
+   ecx_close(&context);
+   return 0;
 }
