@@ -1,39 +1,82 @@
 {
-  "version": 6,
-  "configurePresets": [{
-    "name": "base",
-    "hidden": true,
-    "generator": "Ninja",
-    "binaryDir": "build/${presetName}",
-    "cacheVariables": {
-      "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-      "CMAKE_COMPILE_WARNING_AS_ERROR": true,
-      "CMAKE_FIND_NO_INSTALL_PREFIX": true,
-      "CMAKE_RUNTIME_OUTPUT_DIRECTORY": "$<0:>../../bin"
-    }
-  }, {
-    "name": "docs",
-    "inherits": "base",
-    "cacheVariables": {
-      "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-    }
-  }, {
-    "name": "default",
-    "inherits" : "base"
-  }],
-  "buildPresets": [{
-    "name": "default",
-    "configurePreset": "default"
-  }, {
-    "name": "docs",
-    "configurePreset": "docs",
-    "targets": ["sphinx-html"]
-  }],
-  "packagePresets": [{
-    "name": "default",
-    "configurePreset": "default",
-    "generators": [
-      "ZIP"
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "CMAKE_COMPILE_WARNING_AS_ERROR": true,
+                "CMAKE_FIND_NO_INSTALL_PREFIX": true,
+                "CMAKE_RUNTIME_OUTPUT_DIRECTORY": "$<0:>../../bin"
+            }
+        },
+        {
+            "name": "docs",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "default",
+            "inherits": "base"
+        },
+        {
+            "name": "Configure preset using toolchain file",
+            "displayName": "Configure preset using toolchain file",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_TOOLCHAIN_FILE": "",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
+            }
+        },
+        {
+            "name": "x64",
+            "displayName": "Visual Studio Build Tools 2022 Release - amd64",
+            "description": "Using compilers for Visual Studio 17 2022 (x64 architecture)",
+            "generator": "Visual Studio 17 2022",
+            "toolset": "host=x64",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default"
+        },
+        {
+            "name": "docs",
+            "configurePreset": "docs",
+            "targets": [
+                "sphinx-html"
+            ]
+        },
+        {
+            "name": "x64-debug",
+            "displayName": "Visual Studio Build Tools 2022 Release - amd64 - Debug",
+            "configurePreset": "x64",
+            "configuration": "Debug"
+        }
+    ],
+    "packagePresets": [
+        {
+            "name": "default",
+            "configurePreset": "default",
+            "generators": [
+                "ZIP"
+            ]
+        }
     ]
-  }]
 }
