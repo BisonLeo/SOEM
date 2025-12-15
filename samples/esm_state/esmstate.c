@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     printf("Request SAFE_OP state...\n");
     ecx_statecheck(&ctx, 0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
 
-    expectedWKC = (ctx.group[0].outputsWKC * 2) + ctx.group[0].inputsWKC;
+    expectedWKC = (ctx.grouplist[0].outputsWKC * 2) + ctx.grouplist[0].inputsWKC;
     printf("Expected WKC: %d\n", expectedWKC);
 
     printf("Request OP state...\n");
