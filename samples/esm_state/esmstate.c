@@ -6,16 +6,17 @@
 #define IFNAMESIZE 256
 
 static uint8 IOmap[4096];
+static ecx_contextt ctx;
 
 static void dump_slave_errors(void)
 {
     int i;
 
-    for (i = 1; i <= ec_slavecount; i++)
+    for (i = 1; i <= ctx.slavecount; i++)
     {
         printf("Slave %d state=0x%02x, ALstatus=0x%04x (%s)\n",
-               i, ec_slave[i].state, ec_slave[i].ALstatuscode,
-               ec_ALstatuscode2string(ec_slave[i].ALstatuscode));
+               i, ctx.slavelist[i].state, ctx.slavelist[i].ALstatuscode,
+               ec_ALstatuscode2string(ctx.slavelist[i].ALstatuscode));
     }
 }
 
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
         ifname[sizeof(ifname) - 1] = '\0';
     }
 
-    if (!ec_init(ifname))
+    if (!ecx_init(&ctx, ifname))
     {
         printf("Error: could not initialize adapter '%s'.\n", ifname);
         return -1;
@@ -41,44 +42,44 @@ int main(int argc, char *argv[])
 
     printf("Adapter init OK\n");
 
-    if (ec_config_init(FALSE) <= 0)
+    if (ecx_config_init(&ctx) <= 0)
     {
         printf("No EtherCAT slaves found.\n");
-        ec_close();
+        ecx_close(&ctx);
         return -1;
     }
 
-    printf("%d slaves found.\n", ec_slavecount);
+    printf("%d slaves found.\n", ctx.slavecount);
 
-    ec_config_map(IOmap);
-    ec_configdc();
+    ecx_config_map_group(&ctx, IOmap, 0);
+    ecx_configdc(&ctx);
 
     printf("Request SAFE_OP state...\n");
-    ec_statecheck(0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
+    ecx_statecheck(&ctx, 0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
 
-    expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
+    expectedWKC = (ctx.group[0].outputsWKC * 2) + ctx.group[0].inputsWKC;
     printf("Expected WKC: %d\n", expectedWKC);
 
     printf("Request OP state...\n");
-    ec_slave[0].state = EC_STATE_OPERATIONAL;
-    ec_send_processdata();
-    ec_receive_processdata(EC_TIMEOUTRET);
-    ec_writestate(0);
+    ctx.slavelist[0].state = EC_STATE_OPERATIONAL;
+    ecx_send_processdata(&ctx);
+    ecx_receive_processdata(&ctx, EC_TIMEOUTRET);
+    ecx_writestate(&ctx, 0);
 
     chk = 40;
     do
     {
-        ec_send_processdata();
-        wkc = ec_receive_processdata(EC_TIMEOUTRET);
-        ec_statecheck(0, EC_STATE_OPERATIONAL, 50000);
-    } while (chk-- && (ec_slave[0].state != EC_STATE_OPERATIONAL));
+        ecx_send_processdata(&ctx);
+        wkc = ecx_receive_processdata(&ctx, EC_TIMEOUTRET);
+        ecx_statecheck(&ctx, 0, EC_STATE_OPERATIONAL, 50000);
+    } while (chk-- && (ctx.slavelist[0].state != EC_STATE_OPERATIONAL));
 
-    if (ec_slave[0].state != EC_STATE_OPERATIONAL)
+    if (ctx.slavelist[0].state != EC_STATE_OPERATIONAL)
     {
         printf("Not all slaves reached OPERATIONAL.\n");
-        ec_readstate();
+        ecx_readstate(&ctx);
         dump_slave_errors();
-        ec_close();
+        ecx_close(&ctx);
         return -1;
     }
 
@@ -86,13 +87,13 @@ int main(int argc, char *argv[])
 
     while (1)
     {
-        if ((ec_slavecount >= 1) && (ec_slave[1].outputs != NULL))
+        if ((ctx.slavecount >= 1) && (ctx.slavelist[1].outputs != NULL))
         {
-            *((uint16 *)ec_slave[1].outputs) = controlword;
+            *((uint16 *)ctx.slavelist[1].outputs) = controlword;
         }
 
-        ec_send_processdata();
-        wkc = ec_receive_processdata(EC_TIMEOUTRET);
+        ecx_send_processdata(&ctx);
+        wkc = ecx_receive_processdata(&ctx, EC_TIMEOUTRET);
 
         if (wkc < expectedWKC)
         {
@@ -102,6 +103,6 @@ int main(int argc, char *argv[])
         osal_usleep(5000);
     }
 
-    ec_close();
+    ecx_close(&ctx);
     return 0;
 }
