@@ -11,85 +11,70 @@
 #include <string.h>
 #include <osal.h>
 
-#define USECS_PER_SEC 1000000
-
-int osal_usleep(uint32 usec)
+/* Returns time from some unspecified moment in past,
+ * strictly increasing, used for time intervals measurement. */
+void osal_get_monotonic_time(ec_timet *ts)
 {
-   struct timespec ts;
-   ts.tv_sec = usec / USECS_PER_SEC;
-   ts.tv_nsec = (usec % USECS_PER_SEC) * 1000;
-   /* usleep is deprecated, use nanosleep instead */
-   return nanosleep(&ts, NULL);
-}
-
-int osal_gettimeofday(struct timeval *tv, struct timezone *tz)
-{
-   struct timespec ts;
-   int return_value;
-   (void)tz; /* Not used */
-
-   /* Use clock_gettime to prevent possible live-lock.
-    * Gettimeofday uses CLOCK_REALTIME that can get NTP timeadjust.
-    * If this function preempts timeadjust and it uses vpage it live-locks.
-    * Also when using XENOMAI, only clock_gettime is RT safe */
-   return_value = clock_gettime(CLOCK_MONOTONIC, &ts);
-   tv->tv_sec = ts.tv_sec;
-   tv->tv_usec = ts.tv_nsec / 1000;
-   return return_value;
+   clock_gettime(CLOCK_MONOTONIC, ts);
 }
 
 ec_timet osal_current_time(void)
 {
-   struct timeval current_time;
-   ec_timet return_value;
+   struct timespec ts;
 
-   osal_gettimeofday(&current_time, 0);
-   return_value.sec = current_time.tv_sec;
-   return_value.usec = current_time.tv_usec;
-   return return_value;
+   clock_gettime(CLOCK_REALTIME, &ts);
+   return ts;
 }
 
 void osal_time_diff(ec_timet *start, ec_timet *end, ec_timet *diff)
 {
-   if (end->usec < start->usec)
-   {
-      diff->sec = end->sec - start->sec - 1;
-      diff->usec = end->usec + 1000000 - start->usec;
-   }
-   else
-   {
-      diff->sec = end->sec - start->sec;
-      diff->usec = end->usec - start->usec;
-   }
+   osal_timespecsub(end, start, diff);
 }
 
 void osal_timer_start(osal_timert *self, uint32 timeout_usec)
 {
-   struct timeval start_time;
-   struct timeval timeout;
-   struct timeval stop_time;
+   ec_timet start_time;
+   ec_timet timeout;
 
-   osal_gettimeofday(&start_time, 0);
-   timeout.tv_sec = timeout_usec / USECS_PER_SEC;
-   timeout.tv_usec = timeout_usec % USECS_PER_SEC;
-   timeradd(&start_time, &timeout, &stop_time);
-
-   self->stop_time.sec = stop_time.tv_sec;
-   self->stop_time.usec = stop_time.tv_usec;
+   osal_get_monotonic_time(&start_time);
+   osal_timespec_from_usec(timeout_usec, &timeout);
+   osal_timespecadd(&start_time, &timeout, &self->stop_time);
 }
 
 boolean osal_timer_is_expired(osal_timert *self)
 {
-   struct timeval current_time;
-   struct timeval stop_time;
-   int is_not_yet_expired;
+   ec_timet current_time;
 
-   osal_gettimeofday(&current_time, 0);
-   stop_time.tv_sec = self->stop_time.sec;
-   stop_time.tv_usec = self->stop_time.usec;
-   is_not_yet_expired = timercmp(&current_time, &stop_time, <);
+   osal_get_monotonic_time(&current_time);
+   return osal_timespeccmp(&current_time, &self->stop_time, >=);
+}
 
-   return is_not_yet_expired == FALSE;
+int osal_usleep(uint32 usec)
+{
+   struct timespec ts;
+
+   osal_timespec_from_usec(usec, &ts);
+   return nanosleep(&ts, NULL) == 0 ? 0 : -1;
+}
+
+int osal_monotonic_sleep(ec_timet *ts)
+{
+   ec_timet now;
+   ec_timet diff;
+
+   for (;;)
+   {
+      osal_get_monotonic_time(&now);
+      if (osal_timespeccmp(&now, ts, >=))
+      {
+         return 0;
+      }
+      osal_timespecsub(ts, &now, &diff);
+      if (nanosleep(&diff, NULL) == 0)
+      {
+         return 0;
+      }
+   }
 }
 
 void *osal_malloc(size_t size)
@@ -144,4 +129,34 @@ int osal_thread_create_rt(void *thandle, int stacksize, void *func, void *param)
    }
 
    return 1;
+}
+
+void *osal_mutex_create(void)
+{
+   pthread_mutexattr_t mutexattr;
+   osal_mutext *mutex;
+   mutex = (osal_mutext *)osal_malloc(sizeof(osal_mutext));
+   if (mutex)
+   {
+      pthread_mutexattr_init(&mutexattr);
+      pthread_mutexattr_setprotocol(&mutexattr, PTHREAD_PRIO_INHERIT);
+      pthread_mutex_init(mutex, &mutexattr);
+   }
+   return (void *)mutex;
+}
+
+void osal_mutex_destroy(void *mutex)
+{
+   pthread_mutex_destroy((osal_mutext *)mutex);
+   osal_free(mutex);
+}
+
+void osal_mutex_lock(void *mutex)
+{
+   pthread_mutex_lock((osal_mutext *)mutex);
+}
+
+void osal_mutex_unlock(void *mutex)
+{
+   pthread_mutex_unlock((osal_mutext *)mutex);
 }

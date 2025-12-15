@@ -11,6 +11,11 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
+#include <time.h>
+#include <sys/time.h>
+#include <pthread.h>
+
 // define if debug printf is needed
 #ifdef EC_DEBUG
 #define EC_PRINT printf
@@ -27,10 +32,13 @@ extern "C" {
 #define OSAL_PACKED_END
 #endif
 
-#include <pthread.h>
+#define ec_timet            struct timespec
+
 #define OSAL_THREAD_HANDLE  pthread_t *
 #define OSAL_THREAD_FUNC    void
 #define OSAL_THREAD_FUNC_RT void
+
+#define osal_mutext         pthread_mutex_t
 
 #ifdef __cplusplus
 }
