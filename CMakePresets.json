@@ -25,8 +25,8 @@
             "inherits": "base"
         },
         {
-            "name": "Configure preset using toolchain file",
-            "displayName": "Configure preset using toolchain file",
+            "name": "macos",
+            "displayName": "DebugNinja",
             "description": "Sets Ninja generator, build and install directory",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
@@ -67,6 +67,12 @@
             "name": "x64-debug",
             "displayName": "Visual Studio Build Tools 2022 Release - amd64 - Debug",
             "configurePreset": "x64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "DebugBuildNinja",
+            "displayName": "arm64 - Debug",
+            "configurePreset": "macos",
             "configuration": "Debug"
         }
     ],
